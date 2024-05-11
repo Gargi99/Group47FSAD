@@ -15,41 +15,113 @@ import org.newlearnings.learnnow.util.HttpUrlConnection;
 
 public class UserAnswersDao extends HttpUrlConnection implements UserAnswersDelegator {
 	
-	public boolean submitQuizResponses(List<UserAnswers> userAnswers) {
-		Connection connection = null;
-		PreparedStatement preparedStatement = null;
-		int[] rowAddedIndicator = null;
-		boolean isRowAdded = false;
-		
-		try {
-			connection = getHttpUrlConnection();
-			String insertQuery = "insert into USER_ANSWERS (USER_ID, QUIZ_ID, QUESTION_ID, ANSWER) values (?, ?, ?, ?)";
-			preparedStatement = connection.prepareStatement(insertQuery);
-			
-			for (UserAnswers userAnswer : userAnswers) {
-				preparedStatement.setInt(1, userAnswer.getUserId());
-				preparedStatement.setInt(2, userAnswer.getQuizId());
-				preparedStatement.setInt(3, userAnswer.getQuestionId());
-				preparedStatement.setString(4, userAnswer.getAnswer());
-				
-				preparedStatement.addBatch();
-			}
-			
-			rowAddedIndicator = preparedStatement.executeBatch();
-			
-			for (int indicator : rowAddedIndicator) {
-				if (indicator == 1) {
-					isRowAdded = true;
-					break;
-				}
-			}
-			
-		} catch (Exception exception) {
-			exception.printStackTrace();
-		}
-		
-		return isRowAdded;
+//	public boolean submitQuizResponses(List<UserAnswers> userAnswers) {
+//		Connection connection = null;
+//		PreparedStatement preparedStatement = null;
+//		int[] rowAddedIndicator = null;
+//		boolean isRowAdded = false;
+//		
+//		try {
+//			connection = getHttpUrlConnection();
+//			String insertQuery = "insert into USER_ANSWERS (USER_ID, QUIZ_ID, QUESTION_ID, ANSWER) values (?, ?, ?, ?)";
+//			preparedStatement = connection.prepareStatement(insertQuery);
+//			
+//			for (UserAnswers userAnswer : userAnswers) {
+//				preparedStatement.setInt(1, userAnswer.getUserId());
+//				preparedStatement.setInt(2, userAnswer.getQuizId());
+//				preparedStatement.setInt(3, userAnswer.getQuestionId());
+//				preparedStatement.setString(4, userAnswer.getAnswer());
+//				
+//				preparedStatement.addBatch();
+//			}
+//			
+//			rowAddedIndicator = preparedStatement.executeBatch();
+//			
+//			for (int indicator : rowAddedIndicator) {
+//				if (indicator == 1) {
+//					isRowAdded = true;
+//					break;
+//				}
+//			}
+//			
+//		} catch (Exception exception) {
+//			exception.printStackTrace();
+//		}
+//		
+//		return isRowAdded;
+//	}
+//	
+	
+	public boolean isUserAnswerExists(Connection connection, UserAnswers userAnswer) {
+	    PreparedStatement preparedStatement = null;
+	    ResultSet resultSet = null;
+	    boolean exists = false;
+	    
+	    try {
+	        String selectQuery = "SELECT COUNT(*) FROM USER_ANSWERS WHERE USER_ID = ? AND QUIZ_ID = ? AND QUESTION_ID = ?";
+	        preparedStatement = connection.prepareStatement(selectQuery);
+	        preparedStatement.setInt(1, userAnswer.getUserId());
+	        preparedStatement.setInt(2, userAnswer.getQuizId());
+	        preparedStatement.setInt(3, userAnswer.getQuestionId());
+	        
+	        resultSet = preparedStatement.executeQuery();
+	        if (resultSet.next()) {
+	            int count = resultSet.getInt(1);
+	            exists = (count > 0);
+	        }
+	    } catch (Exception exception) {
+	        exception.printStackTrace();
+	    } finally {
+	        // Close resources
+	        // Handle exceptions
+	    }
+	    
+	    return exists;
 	}
+
+	
+	
+	public boolean submitQuizResponses(List<UserAnswers> userAnswers) {
+	    Connection connection = null;
+	    PreparedStatement preparedStatement = null;
+	    boolean isRowUpdated = false;
+	    
+	    try {
+	        connection = getHttpUrlConnection();
+	        
+	        for (UserAnswers userAnswer : userAnswers) {
+	            // Check if the entry already exists in the database
+	            if (isUserAnswerExists(connection, userAnswer)) {
+	                String updateQuery = "UPDATE USER_ANSWERS SET ANSWER = ? WHERE USER_ID = ? AND QUIZ_ID = ? AND QUESTION_ID = ?";
+	                preparedStatement = connection.prepareStatement(updateQuery);
+	                preparedStatement.setString(1, userAnswer.getAnswer());
+	                preparedStatement.setInt(2, userAnswer.getUserId());
+	                preparedStatement.setInt(3, userAnswer.getQuizId());
+	                preparedStatement.setInt(4, userAnswer.getQuestionId());
+	                preparedStatement.executeUpdate();
+	                isRowUpdated = true;
+	            } else {
+	                // Entry does not exist, perform insert
+	                String insertQuery = "INSERT INTO USER_ANSWERS (USER_ID, QUIZ_ID, QUESTION_ID, ANSWER) VALUES (?, ?, ?, ?)";
+	                preparedStatement = connection.prepareStatement(insertQuery);
+	                preparedStatement.setInt(1, userAnswer.getUserId());
+	                preparedStatement.setInt(2, userAnswer.getQuizId());
+	                preparedStatement.setInt(3, userAnswer.getQuestionId());
+	                preparedStatement.setString(4, userAnswer.getAnswer());
+	                preparedStatement.executeUpdate();
+	            }
+	        }
+	    } catch (Exception exception) {
+	        exception.printStackTrace();
+	    } finally {
+	        // Close resources
+	        // Handle exceptions
+	    }
+	    
+	    return isRowUpdated;
+	}
+
+	
 	
 	public UserResult showResults(ShowResults showResults) {
 		List<QuizDetails> quizDetails = fetchQuizData(showResults.getQuizId(), showResults.getLanguage());

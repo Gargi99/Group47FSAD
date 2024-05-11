@@ -7,7 +7,7 @@ import java.sql.SQLException;
 public class HttpUrlConnection {
 	private static final String JDBCURL = "jdbc:mysql://localhost:3306/learnnow";
 	private static final String USERNAME = "root";
-	private static final String PASSWORD = "admin";
+	private static final String PASSWORD = "Root";
 	
 	/**
 	 * Initiates connection to local database.
